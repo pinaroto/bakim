@@ -43,9 +43,11 @@ async function db_plakaAra(plaka) {
   const temiz = plaka.trim().toUpperCase().replace(/\s+/g, '');
   const snap = await db.collection(KOLEKSIYON)
     .where("plaka", "==", temiz)
-    .orderBy("olusturmaZamani", "desc")
     .get();
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  
+  // Sıralamayı Firebase yerine telefonun kendi içinde yapıyoruz (Index istemez)
+  const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  return list.sort((a, b) => (b.olusturmaZamani || '').localeCompare(a.olusturmaZamani || ''));
 }
 
 // ── Genel arama (plaka veya isim) ───────────────────────────
