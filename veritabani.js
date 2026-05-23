@@ -8,12 +8,13 @@
 // Bu bilgileri Firebase Console'dan kopyalayın:
 // https://console.firebase.google.com → Proje → Proje Ayarları → Uygulamalar
 const FIREBASE_CONFIG = {
-  apiKey:            "BURAYA_API_KEY",
-  authDomain:        "BURAYA_AUTH_DOMAIN",
-  projectId:         "BURAYA_PROJECT_ID",
-  storageBucket:     "BURAYA_STORAGE_BUCKET",
-  messagingSenderId: "BURAYA_MESSAGING_SENDER_ID",
-  appId:             "BURAYA_APP_ID"
+  apiKey:            "AIzaSyABSIyOa9jD1J0HrOpmMpTjOE30iapGZcs",
+  authDomain:        "pinarotobakim-d721e.firebaseapp.com",
+  projectId:         "pinarotobakim-d721e",
+  storageBucket:     "pinarotobakim-d721e.firebasestorage.app",
+  messagingSenderId: "68099987385",
+  appId:             "1:68099987385:web:c43226b07244621b634868",
+  measurementId:     "G-9TM6Z0X91K"
 };
 
 const KOLEKSIYON = "bakimKayitlari";
