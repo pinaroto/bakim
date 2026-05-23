@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Pınar Oto Bakım — Admin</title>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+<style>
+:root{
+  --bg:#f0f2f5;--surface:#ffffff;--surface2:#f7f8fa;
+  --border:#e0e3e8;--text:#1a1d23;--text2:#5a6070;
+  --primary:#c0392b;--primary-dark:#96281b;--primary-light:#e74c3c;
+  --accent:#f39c12;--accent-dark:#d68910;
+  --success:#27ae60;--danger:#e74c3c;--info:#2980b9;--warning:#e67e22;
+  --shadow:0 2px 12px rgba(0,0,0,.10);
+  --shadow-lg:0 8px 32px rgba(0,0,0,.15);
+  --radius:10px;--radius-sm:6px;
+  --font:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;
+}
+[data-theme="dark"]{
+  --bg:#0f1117;--surface:#1a1d26;--surface2:#22263a;
+  --border:#2e3347;--text:#e8eaf0;--text2:#8b92a8;
+  --shadow:0 2px 12px rgba(0,0,0,.40);
+  --shadow-lg:0 8px 32px rgba(0,0,0,.55);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);font-family:var(--font);color:var(--text);min-height:100vh;display:flex;align-items:center;justify-content:center;transition:background .3s;}
+#appOverlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px;z-index:1000;}
+#appWindow{background:var(--surface);border-radius:16px;box-shadow:var(--shadow-lg);width:min(1100px,100%);max-height:95vh;overflow:hidden;display:flex;flex-direction:column;animation:popIn .25s ease;}
+@keyframes popIn{from{transform:scale(.94);opacity:0}to{transform:scale(1);opacity:1}}
+#titleBar{background:linear-gradient(135deg,var(--primary) 0%,var(--primary-dark) 100%);padding:12px 20px;display:flex;align-items:center;gap:14px;border-radius:16px 16px 0 0;flex-shrink:0;}
+#titleBar img{height:52px;border-radius:6px;object-fit:contain;background:#fff;padding:3px;}
+.firm-info h1{font-size:1.15rem;color:#fff;font-weight:700;letter-spacing:.5px}
+.firm-info p{font-size:.75rem;color:rgba(255,255,255,.82);margin-top:1px}
+.bar-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+#themeToggle{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:20px;padding:5px 14px;font-size:.78rem;cursor:pointer;display:flex;align-items:center;gap:6px;transition:.2s;white-space:nowrap;}
+#themeToggle:hover{background:rgba(255,255,255,.28)}
+#closeBtn{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:50%;width:32px;height:32px;cursor:pointer;font-size:1.1rem;display:flex;align-items:center;justify-content:center;transition:.2s;flex-shrink:0;}
+#closeBtn:hover{background:rgba(255,100,100,.55)}
+#tabs{display:flex;border-bottom:2px solid var(--border);background:var(--surface2);flex-shrink:0;overflow-x:auto;}
+.tab{padding:11px 22px;font-size:.85rem;font-weight:600;cursor:pointer;color:var(--text2);border-bottom:3px solid transparent;margin-bottom:-2px;transition:.2s;white-space:nowrap;}
+.tab:hover{color:var(--primary)}
+.tab.active{color:var(--primary);border-bottom-color:var(--primary)}
+#tabContent{overflow-y:auto;flex:1;padding:20px}
+.form-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px}
+.form-group{display:flex;flex-direction:column;gap:5px}
+.form-group label{font-size:.78rem;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.4px}
+.form-group label .req{color:var(--primary);margin-left:3px}
+.form-group input,.form-group select{padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius-sm);background:var(--surface2);color:var(--text);font-size:.9rem;font-family:var(--font);transition:.2s;}
+.form-group input:focus,.form-group select:focus{outline:none;border-color:var(--primary);background:var(--surface)}
+.form-group input.error{border-color:var(--danger)}
+.full-width{grid-column:1/-1}
+.section-title{grid-column:1/-1;font-size:.8rem;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:1px;padding:6px 0 2px;border-bottom:1px solid var(--border);margin-top:6px;}
+.edit-banner{grid-column:1/-1;background:linear-gradient(90deg,#fff3cd,#ffeaa7);border:1.5px solid #f39c12;border-radius:8px;padding:10px 16px;font-size:.85rem;font-weight:600;color:#856404;display:flex;align-items:center;gap:10px;}
+[data-theme="dark"] .edit-banner{background:linear-gradient(90deg,#3d2e00,#4a3800);color:#ffc107;border-color:#f39c12;}
+.btn{padding:10px 22px;border:none;border-radius:var(--radius-sm);font-size:.88rem;font-weight:700;cursor:pointer;transition:.2s;display:inline-flex;align-items:center;gap:7px;letter-spacing:.3px;}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-primary:hover:not(:disabled){background:var(--primary-dark)}
+.btn-secondary{background:var(--surface2);color:var(--text);border:1.5px solid var(--border)}
+.btn-secondary:hover:not(:disabled){border-color:var(--primary);color:var(--primary)}
+.btn-success{background:var(--success);color:#fff}
+.btn-danger{background:var(--danger);color:#fff;font-size:.78rem;padding:6px 14px}
+.btn-accent{background:var(--accent);color:#fff}
+.btn-accent:hover:not(:disabled){background:var(--accent-dark)}
+.btn-warning{background:var(--warning);color:#fff;font-size:.78rem;padding:6px 14px}
+.form-actions{grid-column:1/-1;display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
+.search-bar{display:flex;gap:10px;align-items:center;margin-bottom:18px;flex-wrap:wrap;}
+.search-bar input{flex:1;min-width:200px;padding:10px 14px;border:1.5px solid var(--border);border-radius:var(--radius-sm);background:var(--surface2);color:var(--text);font-size:.9rem;font-family:var(--font);}
+.search-bar input:focus{outline:none;border-color:var(--primary)}
+.records-list{display:flex;flex-direction:column;gap:12px}
+.record-card{background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius);padding:14px 16px;transition:.2s;}
+.record-card:hover{border-color:var(--primary);box-shadow:var(--shadow)}
+.record-card.yaklasiyor{border-color:var(--warning)!important;background:rgba(230,126,34,.07);}
+.record-card.gecmis{border-color:var(--danger)!important;background:rgba(231,76,60,.07);}
+.record-card-header{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap;}
+.plate-badge{background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff;padding:4px 14px;border-radius:4px;font-size:.95rem;font-weight:800;letter-spacing:2px;font-family:'Courier New',monospace;}
+.record-card-header h3{font-size:.95rem;font-weight:700;color:var(--text)}
+.record-card-header .tarih-badge{font-size:.78rem;color:var(--text2);margin-left:auto}
+.bakim-badge{font-size:.72rem;font-weight:700;padding:3px 10px;border-radius:12px;}
+.bakim-badge.ok{background:#d4edda;color:#155724}
+.bakim-badge.yakin{background:#fff3cd;color:#856404}
+.bakim-badge.gecti{background:#f8d7da;color:#721c24}
+[data-theme="dark"] .bakim-badge.ok{background:#1a3a2a;color:#6fcf97}
+[data-theme="dark"] .bakim-badge.yakin{background:#3d2e00;color:#ffc107}
+[data-theme="dark"] .bakim-badge.gecti{background:#3a1a1a;color:#ff6b6b}
+.record-detail-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px 14px;}
+.detail-item{font-size:.8rem}
+.detail-item .lbl{color:var(--text2);font-weight:600}
+.detail-item .val{color:var(--text)}
+.card-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.empty-state{text-align:center;padding:48px 20px;color:var(--text2)}
+.empty-state .icon{font-size:3rem;margin-bottom:12px}
+.empty-state p{font-size:.9rem}
+#hatirlaticiBar{display:none;background:linear-gradient(90deg,#fff3cd,#fde68a);border-bottom:2px solid #f39c12;padding:10px 20px;flex-shrink:0;}
+[data-theme="dark"] #hatirlaticiBar{background:linear-gradient(90deg,#3d2e00,#4a3800);border-bottom-color:#f39c12;}
+#hatirlaticiBar .hat-title{font-size:.82rem;font-weight:800;color:#92400e;margin-bottom:6px;display:flex;align-items:center;gap:6px;}
+[data-theme="dark"] #hatirlaticiBar .hat-title{color:#fbbf24;}
+#hatirlaticiList{display:flex;flex-wrap:wrap;gap:8px;}
+.hat-item{background:#fff;border:1px solid #f39c12;border-radius:20px;padding:4px 12px;font-size:.75rem;font-weight:600;color:#92400e;display:flex;align-items:center;gap:6px;cursor:pointer;transition:.2s;}
+.hat-item:hover{background:#f39c12;color:#fff;}
+.hat-item.gecmis-hat{border-color:var(--danger);color:var(--danger);}
+.hat-item.gecmis-hat:hover{background:var(--danger);color:#fff;}
+[data-theme="dark"] .hat-item{background:#2a1f00;color:#fbbf24;}
+#qrModal{position:fixed;inset:0;background:rgba(0,0,0,.65);display:none;align-items:center;justify-content:center;z-index:2000;}
+#qrModal.open{display:flex}
+#qrBox{background:var(--surface);border-radius:16px;padding:28px 32px;box-shadow:var(--shadow-lg);text-align:center;max-width:360px;width:100%;}
+#qrBox h3{font-size:1rem;margin-bottom:4px;color:var(--text)}
+#qrBox p{font-size:.8rem;color:var(--text2);margin-bottom:16px}
+#qrContainer{display:flex;justify-content:center;margin-bottom:16px}
+#qrContainer canvas,#qrContainer img{border:1px solid var(--border);border-radius:6px;padding:6px;background:#fff}
+.qr-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+#toast{position:fixed;bottom:28px;right:28px;background:var(--success);color:#fff;padding:12px 20px;border-radius:10px;font-size:.88rem;font-weight:600;box-shadow:var(--shadow-lg);opacity:0;pointer-events:none;transform:translateY(12px);transition:.3s;z-index:9999;max-width:340px;}
+#toast.show{opacity:1;transform:translateY(0)}
+#toast.error{background:var(--danger)}
+#toast.info{background:var(--info)}
+#toast.warning{background:var(--warning)}
+.print-area{display:none}
+@media print{
+  *{visibility:hidden}
+  .print-area,.print-area *{visibility:visible}
+  .print-area{display:block!important;position:fixed;inset:0;background:#fff;z-index:99999;}
+  .print-label{border:2px solid #000;border-radius:8px;padding:14px 16px;font-family:Arial,sans-serif;font-size:11px;width:90mm;background:#fff;margin:20px auto;}
+  .print-label-header{text-align:center;font-size:13px;font-weight:bold;margin-bottom:10px;border-bottom:1px solid #ccc;padding-bottom:6px;}
+  .print-label-body{display:flex;gap:12px;align-items:flex-start;}
+  .print-label-info{flex:1;font-size:10.5px;line-height:1.9;}
+  .print-label-info b{display:inline-block;min-width:52px;color:#555;}
+  .print-label-qr{flex-shrink:0;}
+  .print-label-footer{text-align:center;font-size:8.5px;color:#777;margin-top:8px;border-top:1px solid #eee;padding-top:5px;}
+}
+.settings-section{margin-bottom:24px}
+.settings-section h3{font-size:.88rem;font-weight:700;color:var(--primary);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px}
+.settings-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+#pageFooter{font-size:7pt;text-align:center;color:var(--text2);padding:6px;flex-shrink:0;border-top:1px solid var(--border);background:var(--surface2);border-radius:0 0 16px 16px;user-select:none;}
+#tabContent::-webkit-scrollbar{width:6px}
+#tabContent::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+/* Yükleniyor göstergesi */
+.loading-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:5000;display:none;}
+.loading-overlay.aktif{display:flex}
+.loading-spinner{background:var(--surface);border-radius:12px;padding:24px 32px;text-align:center;font-weight:600;color:var(--text);font-size:.9rem;display:flex;flex-direction:column;align-items:center;gap:12px;}
+.spinner{width:36px;height:36px;border:4px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<div id="loadingOverlay" class="loading-overlay">
+  <div class="loading-spinner">
+    <div class="spinner"></div>
+    <span id="loadingText">Yükleniyor...</span>
+  </div>
+</div>
+
+<div id="appOverlay">
+<div id="appWindow">
+
+  <div id="titleBar">
+    <img id="logoImg" src="resimler/logo.png" alt="Logo" onerror="this.style.display='none'"/>
+    <div class="firm-info">
+      <h1>🔧 Pınar Oto Bakım Servisi — Admin</h1>
+      <p>Küçük Sanayi Sitesi — İncesu / KAYSERİ &nbsp;|&nbsp; Mehmet Taşcı &nbsp;|&nbsp; 0 506 099 67 43</p>
+    </div>
+    <div class="bar-right">
+      <button id="themeToggle" onclick="toggleTheme()">🌙 Koyu Mod</button>
+      <button id="closeBtn" title="Kapat" onclick="kapat()">✕</button>
+    </div>
+  </div>
+
+  <div id="hatirlaticiBar">
+    <div class="hat-title">⚠️ Bakım Tarihi Yaklaşan / Geçmiş Araçlar</div>
+    <div id="hatirlaticiList"></div>
+  </div>
+
+  <div id="tabs">
+    <div class="tab active" onclick="sekmeGoster('yeniKayit',this)">➕ Yeni Bakım Kaydı</div>
+    <div class="tab" onclick="sekmeGoster('kayitlar',this)">📋 Kayıtlı Araçlar</div>
+    <div class="tab" onclick="sekmeGoster('hatirlatici',this)">🔔 Hatırlatıcılar</div>
+    <div class="tab" onclick="sekmeGoster('ayarlar',this)">⚙️ Ayarlar &amp; Yedek</div>
+  </div>
+
+  <div id="tabContent">
+
+    <div id="yeniKayit" class="tab-panel">
+      <div class="form-grid">
+        <div id="editBanner" class="edit-banner" style="display:none">
+          ✏️ <span id="editBannerText">Kayıt düzenleniyor...</span>
+          <button class="btn btn-secondary" style="margin-left:auto;font-size:.75rem;padding:5px 12px" onclick="duzenlemeyiIptal()">İptal</button>
+        </div>
+
+        <div class="section-title">🚗 Araç &amp; Müşteri Bilgileri</div>
+        <div class="form-group">
+          <label>Plaka No<span class="req">*</span></label>
+          <input id="f_plaka" type="text" placeholder="34 ABC 1234" oninput="this.value=this.value.toUpperCase()"/>
+        </div>
+        <div class="form-group">
+          <label>Araç Sahibi<span class="req">*</span></label>
+          <input id="f_aracSahibi" type="text" placeholder="Ad Soyad"/>
+        </div>
+        <div class="form-group">
+          <label>Telefon No<span class="req">*</span></label>
+          <input id="f_telefon" type="tel" placeholder="05XX XXX XX XX"/>
+        </div>
+        <div class="form-group">
+          <label>Araç Marka / Model<span class="req">*</span></label>
+          <input id="f_markaModel" type="text" placeholder="Volkswagen Passat"/>
+        </div>
+        <div class="form-group">
+          <label>Model Yılı</label>
+          <input id="f_modelYili" type="number" placeholder="2018" min="1950" max="2035"/>
+        </div>
+        <div class="form-group">
+          <label>Motor No</label>
+          <input id="f_motorNo" type="text" placeholder="Motor numarası"/>
+        </div>
+        <div class="form-group">
+          <label>Şasi No</label>
+          <input id="f_sasiNo" type="text" placeholder="Şasi numarası"/>
+        </div>
+
+        <div class="section-title">📅 Bakım Tarihleri &amp; Kilometreler</div>
+        <div class="form-group">
+          <label>Bakım Tarihi</label>
+          <input id="f_bakimTarihi" type="date"/>
+        </div>
+        <div class="form-group">
+          <label>Sonraki Bakım Tarihi</label>
+          <input id="f_sonrakiBakimTarihi" type="date"/>
+        </div>
+        <div class="form-group">
+          <label>Bakım Kilometresi</label>
+          <input id="f_bakimKm" type="number" placeholder="85000" min="0"/>
+        </div>
+        <div class="form-group">
+          <label>Sonraki Bakım Km</label>
+          <input id="f_sonrakiBakimKm" type="number" placeholder="95000" min="0"/>
+        </div>
+
+        <div class="section-title">🛢️ Kullanılan Malzemeler</div>
+        <div class="form-group">
+          <label>Kullanılan Yağ<span class="req">*</span></label>
+          <input id="f_yag" type="text" placeholder="Castrol Magnatec 5W-40"/>
+        </div>
+        <div class="form-group">
+          <label>Yağ Filtresi<span class="req">*</span></label>
+          <input id="f_yagFiltresi" type="text" placeholder="Marka / Kod"/>
+        </div>
+        <div class="form-group">
+          <label>Yakıt Filtresi</label>
+          <input id="f_yakitFiltresi" type="text" placeholder="Marka / Kod"/>
+        </div>
+        <div class="form-group">
+          <label>Polen Filtresi</label>
+          <input id="f_polenFiltresi" type="text" placeholder="Marka / Kod"/>
+        </div>
+        <div class="form-group">
+          <label>Hava Filtresi</label>
+          <input id="f_havaFiltresi" type="text" placeholder="Marka / Kod"/>
+        </div>
+
+        <div class="form-actions">
+          <button id="btnKaydet" class="btn btn-primary" onclick="kayitKaydet()">💾 Kaydet &amp; WhatsApp Gönder</button>
+          <button class="btn btn-secondary" onclick="formuTemizle()">🗑️ Temizle</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="kayitlar" class="tab-panel" style="display:none">
+      <div class="search-bar">
+        <input id="aramaKutusu" type="text" placeholder="🔍  Plaka veya isim ile arayın…" oninput="aramaYap(this.value)"/>
+        <button class="btn btn-secondary" onclick="aramaYap('');document.getElementById('aramaKutusu').value=''">Tümünü Göster</button>
+      </div>
+      <div id="recordsList" class="records-list"></div>
+    </div>
+
+    <div id="hatirlatici" class="tab-panel" style="display:none">
+      <div id="hatirlaticiDetay"></div>
+    </div>
+
+    <div id="ayarlar" class="tab-panel" style="display:none">
+      <div class="settings-section">
+        <h3>💾 Veri Yedekleme</h3>
+        <div class="settings-row">
+          <button class="btn btn-accent" onclick="disaAktarAsync()">⬇️ Yedek Al (JSON)</button>
+          <button class="btn btn-secondary" onclick="document.getElementById('iceAktarInput').click()">⬆️ Yedek Yükle</button>
+          <input type="file" id="iceAktarInput" accept=".json" style="display:none" onchange="iceAktarDosya(this)"/>
+        </div>
+      </div>
+      <div class="settings-section">
+        <h3>ℹ️ Uygulama Hakkında</h3>
+        <p style="font-size:.85rem;color:var(--text2);line-height:1.7">
+          Pınar Oto Bakım Servisi kayıt uygulaması.<br>
+          Veriler Firebase Firestore'da bulutta saklanmaktadır.<br>
+          Windows, Android ve iOS'ta aynı veriye erişilir.
+        </p>
+      </div>
+      <div class="settings-section">
+        <h3>🗑️ Tehlikeli Bölge</h3>
+        <button class="btn btn-danger" onclick="tumKayitlariSil()">Tüm Kayıtları Sil (Geri Alınamaz)</button>
+      </div>
+    </div>
+
+  </div>
+  <div id="pageFooter"></div>
+</div>
+</div>
+
+<div id="qrModal">
+  <div id="qrBox">
+    <h3>🔲 Bakım QR Kodu</h3>
+    <p id="qrPlaka"></p>
+    <div id="qrContainer"></div>
+    <p style="font-size:.75rem;color:var(--text2);margin-bottom:10px;line-height:1.5">
+      📱 <b>WhatsApp Gönder</b>'e basınca QR kod linki müşteriye gider.<br>
+      Resim olarak göndermek için <b>İndir</b>'e basıp görseli WhatsApp'ta paylaşabilirsiniz.
+    </p>
+    <div class="qr-actions">
+      <button class="btn btn-success" onclick="qrWhatsapp()">📱 WhatsApp Gönder</button>
+      <button class="btn btn-accent" onclick="qrIndir()">⬇️ İndir (PNG)</button>
+      <button class="btn btn-primary" onclick="qrYazdir()">🖨️ Yazdır</button>
+      <button class="btn btn-secondary" onclick="qrKapat()">Kapat</button>
+    </div>
+  </div>
+</div>
+
+<div class="print-area" id="printArea"></div>
+<div id="toast"></div>
+
+<script src="veritabani.js"></script>
+<script>
+/* ── İmza ───────────────────────────────────────────────── */
+(function(){
+  const s=[77,101,104,109,101,116,32,73,83,73,75];
+  document.getElementById('pageFooter').textContent=s.map(c=>String.fromCharCode(c)).join('');
+})();
+
+/* ── Yükleniyor ─────────────────────────────────────────── */
+function yukleniyorGoster(metin='Yükleniyor...'){
+  document.getElementById('loadingText').textContent=metin;
+  document.getElementById('loadingOverlay').classList.add('aktif');
+}
+function yukleniyorGizle(){
+  document.getElementById('loadingOverlay').classList.remove('aktif');
+}
+
+/* ── Tema ───────────────────────────────────────────────── */
+const htmlEl=document.documentElement;
+function uygulanTema(t){
+  htmlEl.setAttribute('data-theme',t);
+  document.getElementById('themeToggle').textContent=t==='dark'?'☀️ Açık Mod':'🌙 Koyu Mod';
+  localStorage.setItem('pinar_tema',t);
+}
+function toggleTheme(){uygulanTema(htmlEl.getAttribute('data-theme')==='dark'?'light':'dark');}
+uygulanTema(localStorage.getItem('pinar_tema')||'light');
+
+function kapat(){if(confirm('Uygulamayı kapatmak istiyor musunuz?'))window.close();}
+
+/* ── Sekmeler ───────────────────────────────────────────── */
+function sekmeGoster(id,el){
+  document.querySelectorAll('.tab-panel').forEach(p=>p.style.display='none');
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById(id).style.display='block';
+  el.classList.add('active');
+  if(id==='kayitlar') aramaYap('');
+  if(id==='hatirlatici') hatirlaticiDetayGoster();
+}
+
+/* ── Toast ──────────────────────────────────────────────── */
+function toast(msg,tip='success'){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.className='show '+tip;
+  setTimeout(()=>t.className='',3500);
+}
+
+/* ── Telefon formatı ────────────────────────────────────── */
+function telFormat(ham){
+  let t=ham.replace(/\D/g,'');
+  if(t.startsWith('90')) t=t.slice(2);
+  if(t.startsWith('0'))  t=t.slice(1);
+  return '90'+t;
+}
+
+/* ── WhatsApp mesajı ────────────────────────────────────── */
+function whatsappMesaj(kayit,etiket){
+  const no=telFormat(kayit.telefon);
+  const baslik=etiket||'BAKIM BİLGİ MESAJI';
+  const mesaj=
+`🔧 *PINAR OTO BAKIM SERVİSİ — ${baslik}*
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Sayın *${kayit.aracSahibi}*,
+Aracınıza ait bakım bilgileri aşağıda özetlenmiştir.
+
+🚗 *Araç Bilgileri*
+• Plaka       : ${kayit.plaka}
+• Marka/Model : ${kayit.markaModel}
+• Model Yılı  : ${kayit.modelYili}
+• Motor No    : ${kayit.motorNo}
+• Şasi No     : ${kayit.sasiNo}
+
+📅 *Bakım Bilgileri*
+• Bakım Tarihi       : ${kayit.bakimTarihi}
+• Sonraki Bakım      : ${kayit.sonrakiBakimTarihi}
+• Bakım Km           : ${kayit.bakimKm}
+• Sonraki Bakım Km   : ${kayit.sonrakiBakimKm}
+
+🛢️ *Kullanılan Malzemeler*
+• Motor Yağı    : ${kayit.yag}
+• Yağ Filtresi  : ${kayit.yagFiltresi}
+• Yakıt Filtresi: ${kayit.yakitFiltresi}
+• Polen Filtresi: ${kayit.polenFiltresi}
+• Hava Filtresi : ${kayit.havaFiltresi}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ *Tercihleriniz için teşekkür ederiz!*
+Yetkili : Mehmet Taşcı
+📞 0 506 099 67 43
+_Pınar Oto Bakım Servisi — İncesu/KAYSERİ_`;
+  window.open(`https://wa.me/${no}?text=${encodeURIComponent(mesaj)}`,'_blank');
+}
+
+function whatsappHatirlatma(kayit){
+  const no=telFormat(kayit.telefon);
+  const mesaj=
+`🔔 *BAKIM HATIRLATMASI — PINAR OTO BAKIM SERVİSİ*
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Sayın *${kayit.aracSahibi}*,
+
+*${kayit.plaka}* plakalı aracınızın periyodik bakım tarihi yaklaşmış veya geçmiştir.
+
+📅 Sonraki Bakım Tarihi : ${kayit.sonrakiBakimTarihi}
+🛣️ Sonraki Bakım Km    : ${kayit.sonrakiBakimKm}
+
+Aracınızın bakımını zamanında yaptırmanız önemlidir.
+📞 0 506 099 67 43
+_Pınar Oto Bakım Servisi — İncesu/KAYSERİ_`;
+  window.open(`https://wa.me/${no}?text=${encodeURIComponent(mesaj)}`,'_blank');
+}
+
+/* ── Form temizle ───────────────────────────────────────── */
+let duzenlemeModu=false;
+let duzenlenenId=null;
+
+function formuTemizle(){
+  ['plaka','aracSahibi','telefon','markaModel','modelYili','motorNo','sasiNo',
+   'bakimTarihi','sonrakiBakimTarihi','bakimKm','sonrakiBakimKm',
+   'yag','yagFiltresi','yakitFiltresi','polenFiltresi','havaFiltresi']
+  .forEach(id=>{const el=document.getElementById('f_'+id);if(el)el.value='';});
+  duzenlemeyiIptal();
+}
+
+function duzenlemeyiIptal(){
+  duzenlemeModu=false;duzenlenenId=null;
+  document.getElementById('editBanner').style.display='none';
+  document.getElementById('btnKaydet').textContent='💾 Kaydet & WhatsApp Gönder';
+}
+
+/* ── Düzenle ────────────────────────────────────────────── */
+async function kayitDuzenle(id){
+  yukleniyorGoster('Kayıt yükleniyor...');
+  try{
+    const liste=await db_tumKayitlari();
+    const k=liste.find(x=>x.id===id);
+    if(!k){toast('Kayıt bulunamadı!','error');return;}
+    sekmeGoster('yeniKayit',document.querySelectorAll('.tab')[0]);
+    const set=(fid,val)=>{const el=document.getElementById('f_'+fid);if(el)el.value=val==='İşlem yapılmadı'?'':val;};
+    set('plaka',k.plaka);set('aracSahibi',k.aracSahibi);set('telefon',k.telefon);
+    set('markaModel',k.markaModel);set('modelYili',k.modelYili);
+    set('motorNo',k.motorNo);set('sasiNo',k.sasiNo);
+    set('bakimTarihi',k.bakimTarihi);set('sonrakiBakimTarihi',k.sonrakiBakimTarihi);
+    set('bakimKm',k.bakimKm);set('sonrakiBakimKm',k.sonrakiBakimKm);
+    set('yag',k.yag);set('yagFiltresi',k.yagFiltresi);
+    set('yakitFiltresi',k.yakitFiltresi);set('polenFiltresi',k.polenFiltresi);set('havaFiltresi',k.havaFiltresi);
+    duzenlemeModu=true;duzenlenenId=id;
+    document.getElementById('editBanner').style.display='flex';
+    document.getElementById('editBannerText').textContent=`Düzenleniyor: ${k.plaka} — ${k.aracSahibi}`;
+    document.getElementById('btnKaydet').textContent='✅ Güncelle & Müşteriyi Bilgilendir';
+    document.getElementById('tabContent').scrollTop=0;
+  }catch(e){toast('Hata: '+e.message,'error');}
+  finally{yukleniyorGizle();}
+}
+
+/* ── Zorunlu kontrol ────────────────────────────────────── */
+function zorunluKontrol(){
+  const zorunlu=[['f_plaka','Plaka'],['f_aracSahibi','Araç Sahibi'],['f_telefon','Telefon'],
+                 ['f_markaModel','Marka/Model'],['f_yag','Kullanılan Yağ'],['f_yagFiltresi','Yağ Filtresi']];
+  let ok=true;
+  zorunlu.forEach(([fid])=>{
+    const el=document.getElementById(fid);
+    if(!el.value.trim()){el.classList.add('error');setTimeout(()=>el.classList.remove('error'),2500);ok=false;}
+  });
+  if(!ok)toast('Kırmızı yıldızlı (*) alanlar zorunludur!','error');
+  return ok;
+}
+
+function deger(id){const v=document.getElementById('f_'+id).value.trim();return v||'İşlem yapılmadı';}
+function degerHam(id){return document.getElementById('f_'+id).value.trim();}
+
+/* ── Kaydet / Güncelle ──────────────────────────────────── */
+async function kayitKaydet(){
+  if(!zorunluKontrol())return;
+  const btn=document.getElementById('btnKaydet');
+  btn.disabled=true;
+  yukleniyorGoster('Kaydediliyor...');
+  try{
+    const gun=new Date().toLocaleDateString('tr-TR');
+    const kayit={
+      plaka:degerHam('plaka').toUpperCase(),
+      aracSahibi:degerHam('aracSahibi'),
+      telefon:degerHam('telefon'),
+      markaModel:deger('markaModel'),modelYili:deger('modelYili'),
+      motorNo:deger('motorNo'),sasiNo:deger('sasiNo'),
+      bakimTarihi:degerHam('bakimTarihi')||gun,
+      sonrakiBakimTarihi:deger('sonrakiBakimTarihi'),
+      bakimKm:deger('bakimKm'),sonrakiBakimKm:deger('sonrakiBakimKm'),
+      yag:degerHam('yag'),yagFiltresi:degerHam('yagFiltresi'),
+      yakitFiltresi:deger('yakitFiltresi'),polenFiltresi:deger('polenFiltresi'),havaFiltresi:deger('havaFiltresi'),
+    };
+    if(duzenlemeModu && duzenlenenId){
+      await db_kayitGuncelle(duzenlenenId,kayit);
+      kayit.id=duzenlenenId;
+      toast('✅ Kayıt güncellendi!');
+      setTimeout(()=>whatsappMesaj(kayit,'BAKIM KAYDI GÜNCELLENDİ'),600);
+      setTimeout(()=>qrGoster(kayit),1600);
+      duzenlemeyiIptal();
+    } else {
+      const kaydedilen=await db_kayitEkle(kayit);
+      toast('✅ Kayıt başarıyla kaydedildi!');
+      setTimeout(()=>whatsappMesaj(kaydedilen),600);
+      setTimeout(()=>qrGoster(kaydedilen),1800);
+    }
+    formuTemizle();
+    await hatirlaticiKontrol();
+  }catch(e){toast('❌ Hata: '+e.message,'error');}
+  finally{btn.disabled=false;yukleniyorGizle();}
+}
+
+/* ── Bakım durumu ───────────────────────────────────────── */
+function bakimDurumu(kayit){
+  if(!kayit.sonrakiBakimTarihi||kayit.sonrakiBakimTarihi==='İşlem yapılmadı') return null;
+  const bugun=new Date(); bugun.setHours(0,0,0,0);
+  const hedef=new Date(kayit.sonrakiBakimTarihi);
+  if(isNaN(hedef)) return null;
+  return Math.round((hedef-bugun)/(1000*60*60*24));
+}
+
+/* ── Hatırlatıcı banner ─────────────────────────────────── */
+async function hatirlaticiKontrol(){
+  try{
+    const liste=await db_tumKayitlari();
+    const sonKayitlar={};
+    liste.forEach(k=>{
+      if(!sonKayitlar[k.plaka]||k.olusturmaZamani>sonKayitlar[k.plaka].olusturmaZamani)
+        sonKayitlar[k.plaka]=k;
+    });
+    const uyarilar=[];
+    Object.values(sonKayitlar).forEach(k=>{
+      const f=bakimDurumu(k);
+      if(f!==null&&f<=30) uyarilar.push({kayit:k,fark:f});
+    });
+    const bar=document.getElementById('hatirlaticiBar');
+    const lst=document.getElementById('hatirlaticiList');
+    if(uyarilar.length===0){bar.style.display='none';return;}
+    bar.style.display='block';
+    lst.innerHTML=uyarilar.map(u=>{
+      const cls=u.fark<0?'hat-item gecmis-hat':'hat-item';
+      const etiket=u.fark<0?`${Math.abs(u.fark)} gün geçti`:(u.fark===0?'BUGÜN':u.fark+' gün kaldı');
+      return `<span class="${cls}" onclick='whatsappHatirlatma(${JSON.stringify(u.kayit)})' title="WhatsApp hatırlatma gönder">
+        🚗 ${u.kayit.plaka} — ${u.kayit.aracSahibi} (${etiket}) 📱</span>`;
+    }).join('');
+  }catch(e){console.warn('Hatırlatıcı yüklenemedi:',e);}
+}
+
+/* ── Hatırlatıcılar sekmesi ─────────────────────────────── */
+async function hatirlaticiDetayGoster(){
+  const el=document.getElementById('hatirlaticiDetay');
+  el.innerHTML='<div class="empty-state"><div class="spinner" style="margin:auto"></div></div>';
+  try{
+    const liste=await db_tumKayitlari();
+    const sonKayitlar={};
+    liste.forEach(k=>{
+      if(!sonKayitlar[k.plaka]||k.olusturmaZamani>sonKayitlar[k.plaka].olusturmaZamani)
+        sonKayitlar[k.plaka]=k;
+    });
+    const hepsi=Object.values(sonKayitlar).map(k=>({kayit:k,fark:bakimDurumu(k)}))
+      .filter(x=>x.fark!==null).sort((a,b)=>a.fark-b.fark);
+    if(hepsi.length===0){
+      el.innerHTML='<div class="empty-state"><div class="icon">🔔</div><p>Takip edilebilir sonraki bakım tarihi girilmiş araç bulunmuyor.</p></div>';
+      return;
+    }
+    const gruplar=[
+      {baslik:'🔴 Bakım Tarihi Geçmiş',liste:hepsi.filter(x=>x.fark<0),cls:'gecmis'},
+      {baslik:'🟠 30 Gün İçinde Bakım',liste:hepsi.filter(x=>x.fark>=0&&x.fark<=30),cls:'yakin'},
+      {baslik:'🟢 Bakım Tarihi Uzak',liste:hepsi.filter(x=>x.fark>30),cls:'ok'},
+    ];
+    el.innerHTML=gruplar.filter(g=>g.liste.length>0).map(g=>`
+      <div style="margin-bottom:20px">
+        <div class="section-title" style="margin-bottom:10px">${g.baslik} (${g.liste.length} araç)</div>
+        <div class="records-list">
+          ${g.liste.map(u=>{
+            const k=u.kayit;
+            const etiket=u.fark<0?`${Math.abs(u.fark)} gün geçti`:(u.fark===0?'BUGÜN':u.fark+' gün kaldı');
+            return `<div class="record-card ${u.fark<0?'gecmis':u.fark<=30?'yaklasiyor':''}">
+              <div class="record-card-header">
+                <span class="plate-badge">${k.plaka}</span>
+                <h3>${k.aracSahibi}</h3>
+                <span class="bakim-badge ${g.cls}">${etiket}</span>
+              </div>
+              <div class="record-detail-grid">
+                <div class="detail-item"><span class="lbl">📞 Telefon: </span><span class="val">${k.telefon}</span></div>
+                <div class="detail-item"><span class="lbl">🚗 Araç: </span><span class="val">${k.markaModel}</span></div>
+                <div class="detail-item"><span class="lbl">📅 Sonraki Bakım: </span><span class="val">${k.sonrakiBakimTarihi}</span></div>
+                <div class="detail-item"><span class="lbl">🛣️ Sonraki Km: </span><span class="val">${k.sonrakiBakimKm}</span></div>
+              </div>
+              <div class="card-actions">
+                <button class="btn btn-accent" style="font-size:.78rem;padding:6px 14px"
+                  onclick='whatsappHatirlatma(${JSON.stringify(k)})'>📱 Hatırlatma Gönder</button>
+                <button class="btn btn-warning"
+                  onclick='kayitDuzenle("${k.id}")'>✏️ Düzenle</button>
+              </div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>`).join('');
+  }catch(e){el.innerHTML='<div class="empty-state"><p>❌ Yükleme hatası: '+e.message+'</p></div>';}
+}
+
+/* ── QR Kod ─────────────────────────────────────────────── */
+let aktifQrKayit=null;
+function qrIcerik(k){
+  return ['PINAR OTO BAKIM','Plaka: '+k.plaka,'Araç: '+k.markaModel,
+    'Sahibi: '+k.aracSahibi,'Bakım: '+k.bakimTarihi,
+    'Sonraki: '+k.sonrakiBakimTarihi,'Sonraki Km: '+k.sonrakiBakimKm,
+    'Yağ: '+k.yag,'ID: '+k.id].join('\n');
+}
+function qrGoster(kayit){
+  aktifQrKayit=kayit;
+  document.getElementById('qrPlaka').textContent=kayit.plaka+' — '+kayit.aracSahibi;
+  const cont=document.getElementById('qrContainer');
+  const url='https://api.qrserver.com/v1/create-qr-code/?size=200x200&data='+encodeURIComponent(qrIcerik(kayit));
+  cont.innerHTML='<img src="'+url+'" width="200" height="200" style="border:1px solid var(--border);border-radius:6px;padding:6px;background:#fff" alt="QR Kod"/>';
+  document.getElementById('qrModal').classList.add('open');
+}
+function qrKapat(){document.getElementById('qrModal').classList.remove('open');}
+
+function qrWhatsapp(){
+  if(!aktifQrKayit)return;
+  const k=aktifQrKayit;
+  const no=telFormat(k.telefon);
+  const qrUrl='https://api.qrserver.com/v1/create-qr-code/?size=300x300&data='+encodeURIComponent(qrIcerik(k));
+  const mesaj=
+`🔲 *BAKIM QR KODUNUZ — PINAR OTO BAKIM SERVİSİ*
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Sayın *${k.aracSahibi}*,
+
+*${k.plaka}* plakalı aracınıza ait QR kodunuz hazırlanmıştır.
+
+👇 *QR Kodunuzu görüntülemek için:*
+${qrUrl}
+
+📞 0 506 099 67 43
+_Pınar Oto Bakım Servisi — İncesu/KAYSERİ_`;
+  window.open('https://wa.me/'+no+'?text='+encodeURIComponent(mesaj),'_blank');
+}
+
+function qrIndir(){
+  if(!aktifQrKayit)return;
+  const k=aktifQrKayit;
+  const qrUrl='https://api.qrserver.com/v1/create-qr-code/?size=400x400&data='+encodeURIComponent(qrIcerik(k));
+  fetch(qrUrl).then(r=>r.blob()).then(blob=>{
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;a.download='QR_'+k.plaka.replace(/\s/g,'_')+'_'+k.bakimTarihi+'.png';
+    a.click();URL.revokeObjectURL(url);
+    toast('✅ QR kod indirildi!','success');
+  }).catch(()=>{window.open(qrUrl,'_blank');toast('ℹ️ QR yeni sekmede açıldı.','info');});
+}
+
+function qrYazdir(){
+  if(!aktifQrKayit)return;
+  const k=aktifQrKayit;
+  const qrUrl='https://api.qrserver.com/v1/create-qr-code/?size=150x150&data='+encodeURIComponent(qrIcerik(k));
+  document.getElementById('printArea').innerHTML=`
+  <div class="print-label">
+    <div class="print-label-header">🔧 Pınar Oto Bakım Servisi</div>
+    <div class="print-label-body">
+      <div class="print-label-qr"><img src="${qrUrl}" width="150"/></div>
+      <div class="print-label-info">
+        <div><b>Plaka:</b> ${k.plaka}</div>
+        <div><b>Sahibi:</b> ${k.aracSahibi}</div>
+        <div><b>Araç:</b> ${k.markaModel} (${k.modelYili})</div>
+        <div><b>Bakım:</b> ${k.bakimTarihi}</div>
+        <div><b>Sonraki:</b> ${k.sonrakiBakimTarihi}</div>
+        <div><b>Sn. Km:</b> ${k.sonrakiBakimKm}</div>
+      </div>
+    </div>
+    <div class="print-label-footer">Mehmet Taşcı — 0 506 099 67 43 — İncesu/KAYSERİ</div>
+  </div>`;
+  const img=document.querySelector('#printArea img');
+  if(img&&!img.complete){img.onload=()=>window.print();}else{window.print();}
+}
+
+/* ── Kayıt kartı HTML ───────────────────────────────────── */
+function kartHTML(k){
+  const tarih=k.olusturmaZamani?new Date(k.olusturmaZamani).toLocaleString('tr-TR'):'';
+  const guncellendi=k.guncellemZamani?' (Güncellendi: '+new Date(k.guncellemZamani).toLocaleString('tr-TR')+')':'';
+  const f=bakimDurumu(k);
+  let cls='';let badge='';
+  if(f!==null){
+    if(f<0){cls='gecmis';badge=`<span class="bakim-badge gecti">${Math.abs(f)} gün geçti</span>`;}
+    else if(f<=30){cls='yaklasiyor';badge=`<span class="bakim-badge yakin">${f===0?'BUGÜN':f+' gün'}</span>`;}
+    else{badge=`<span class="bakim-badge ok">${f} gün</span>`;}
+  }
+  return `
+<div class="record-card ${cls}">
+  <div class="record-card-header">
+    <span class="plate-badge">${k.plaka}</span>
+    <h3>${k.aracSahibi}</h3>
+    ${badge}
+    <span class="tarih-badge">${tarih}${guncellendi}</span>
+  </div>
+  <div class="record-detail-grid">
+    <div class="detail-item"><span class="lbl">📞 Telefon: </span><span class="val">${k.telefon}</span></div>
+    <div class="detail-item"><span class="lbl">🚗 Araç: </span><span class="val">${k.markaModel} (${k.modelYili})</span></div>
+    <div class="detail-item"><span class="lbl">📅 Bakım: </span><span class="val">${k.bakimTarihi}</span></div>
+    <div class="detail-item"><span class="lbl">📅 Sonraki: </span><span class="val">${k.sonrakiBakimTarihi}</span></div>
+    <div class="detail-item"><span class="lbl">🛣️ Bakım Km: </span><span class="val">${k.bakimKm}</span></div>
+    <div class="detail-item"><span class="lbl">🛣️ Sonraki Km: </span><span class="val">${k.sonrakiBakimKm}</span></div>
+    <div class="detail-item"><span class="lbl">🛢️ Yağ: </span><span class="val">${k.yag}</span></div>
+    <div class="detail-item"><span class="lbl">🔩 Yağ Filtresi: </span><span class="val">${k.yagFiltresi}</span></div>
+    <div class="detail-item"><span class="lbl">⛽ Yakıt Filtresi: </span><span class="val">${k.yakitFiltresi}</span></div>
+    <div class="detail-item"><span class="lbl">🌿 Polen Filtresi: </span><span class="val">${k.polenFiltresi}</span></div>
+    <div class="detail-item"><span class="lbl">💨 Hava Filtresi: </span><span class="val">${k.havaFiltresi}</span></div>
+    <div class="detail-item"><span class="lbl">🔧 Motor No: </span><span class="val">${k.motorNo}</span></div>
+    <div class="detail-item"><span class="lbl">🔑 Şasi No: </span><span class="val">${k.sasiNo}</span></div>
+  </div>
+  <div class="card-actions">
+    <button class="btn btn-warning" onclick="kayitDuzenle('${k.id}')">✏️ Düzenle</button>
+    <button class="btn btn-primary" style="font-size:.78rem;padding:6px 14px" onclick='qrGoster(${JSON.stringify(k).replace(/'/g,"&#39;")})'>🔲 QR Göster</button>
+    <button class="btn btn-accent" style="font-size:.78rem;padding:6px 14px" onclick='whatsappMesaj(${JSON.stringify(k).replace(/'/g,"&#39;")})'>📱 WhatsApp</button>
+    <button class="btn btn-accent" style="font-size:.78rem;padding:6px 14px;background:var(--success)" onclick='whatsappHatirlatma(${JSON.stringify(k).replace(/'/g,"&#39;")})'>🔔 Hatırlatma</button>
+    <button class="btn btn-danger" onclick="kayitSilOnay('${k.id}')">🗑️ Sil</button>
+  </div>
+</div>`;
+}
+
+/* ── Arama ──────────────────────────────────────────────── */
+let aramaTimeout=null;
+async function aramaYap(q){
+  clearTimeout(aramaTimeout);
+  aramaTimeout=setTimeout(async()=>{
+    const el=document.getElementById('recordsList');
+    el.innerHTML='<div class="empty-state"><div class="spinner" style="margin:auto"></div></div>';
+    try{
+      const liste=q.trim()===''?await db_tumKayitlari():await db_ara(q);
+      if(liste.length===0){
+        el.innerHTML='<div class="empty-state"><div class="icon">📭</div><p>Kayıt bulunamadı.</p></div>';
+        return;
+      }
+      el.innerHTML=liste.map(k=>kartHTML(k)).join('');
+    }catch(e){el.innerHTML='<div class="empty-state"><p>❌ Yükleme hatası: '+e.message+'</p></div>';}
+  },300);
+}
+
+/* ── Sil ────────────────────────────────────────────────── */
+async function kayitSilOnay(id){
+  if(confirm('Bu kaydı silmek istediğinizden emin misiniz?')){
+    yukleniyorGoster('Siliniyor...');
+    try{
+      await db_kayitSil(id);
+      await aramaYap(document.getElementById('aramaKutusu').value);
+      toast('Kayıt silindi.','info');
+      await hatirlaticiKontrol();
+    }catch(e){toast('❌ Hata: '+e.message,'error');}
+    finally{yukleniyorGizle();}
+  }
+}
+
+async function tumKayitlariSil(){
+  if(confirm('TÜM kayıtlar silinecek! Bu işlem geri alınamaz.\nEmin misiniz?')){
+    yukleniyorGoster('Tüm kayıtlar siliniyor...');
+    try{
+      const liste=await db_tumKayitlari();
+      for(const k of liste) await db_kayitSil(k.id);
+      await aramaYap('');await hatirlaticiKontrol();
+      toast('Tüm kayıtlar silindi.','error');
+    }catch(e){toast('❌ Hata: '+e.message,'error');}
+    finally{yukleniyorGizle();}
+  }
+}
+
+/* ── Yedek ──────────────────────────────────────────────── */
+async function disaAktarAsync(){
+  yukleniyorGoster('Yedek hazırlanıyor...');
+  try{await db_disaAktar();}
+  catch(e){toast('❌ Hata: '+e.message,'error');}
+  finally{yukleniyorGizle();}
+}
+
+async function iceAktarDosya(input){
+  const f=input.files[0];if(!f)return;
+  yukleniyorGoster('Yükleniyor...');
+  const r=new FileReader();
+  r.onload=async e=>{
+    try{
+      const s=await db_iceAktar(e.target.result);
+      if(s.basari){toast('✅ '+s.eklenen+' yeni kayıt eklendi.');await hatirlaticiKontrol();}
+      else toast('❌ Hata: '+s.hata,'error');
+    }catch(err){toast('❌ Hata: '+err.message,'error');}
+    finally{yukleniyorGizle();}
+  };
+  r.readAsText(f,'utf-8');input.value='';
+}
+
+document.getElementById('qrModal').addEventListener('click',function(e){if(e.target===this)qrKapat();});
+
+/* ── Başlangıç ──────────────────────────────────────────── */
+(async()=>{
+  yukleniyorGoster('Bağlanıyor...');
+  try{
+    await aramaYap('');
+    await hatirlaticiKontrol();
+  }catch(e){
+    document.getElementById('recordsList').innerHTML=
+      '<div class="empty-state"><p>❌ Firebase bağlantı hatası.<br>veritabani.js dosyasında FIREBASE_CONFIG bilgilerini giriniz.</p></div>';
+  }finally{yukleniyorGizle();}
+})();
+</script>
+</body>
+</html>
